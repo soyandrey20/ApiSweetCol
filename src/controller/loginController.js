@@ -10,13 +10,13 @@ import crypto from 'crypto';
 
 export const loginUser = async (req, res) => {
     try {
-        // Extraer el email y la contraseña del cuerpo de la solicitud
+        // Extraer el id y la contraseña del cuerpo de la solicitud
         const { id, password } = req.body;
 
         // Obtener conexión a la base de datos
         const pool = await getConnection();
 
-        // Consultar el usuario por email
+        // Consultar el usuario por id
         const result = await pool
             .request()
             .input('id', sql.VarChar, id)
