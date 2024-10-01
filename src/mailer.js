@@ -28,3 +28,27 @@ export function enviarCorreo(destinatario, asunto, contenidoHtml) {
         }
     });
 }
+
+export function enviarCorreoConPDF(destinatario, asunto, contenidoHtml, pdfBuffer) {
+    const mailOptions = {
+        from: 'burgaandrey@gmail.com',
+        to: destinatario,
+        subject: asunto,
+        html: contenidoHtml,
+        attachments: [
+            {
+                filename: 'InformeUsuarios.pdf',
+                content: pdfBuffer,  // El contenido del archivo PDF en forma de buffer
+                contentType: 'application/pdf'
+            }
+        ]
+    };
+
+    transporter.sendMail(mailOptions, function (error, info) {
+        if (error) {
+            console.error('Error al enviar el correo:', error);
+        } else {
+            console.log('Correo enviado:', info.response);
+        }
+    });
+};
