@@ -102,5 +102,5 @@ export const iniciarBackupAutomatico = (io) => {
         } catch (err) {
             console.error('Error al realizar el backup automático:', err);
         }
-    }, 30 * 64 * 1000); // 30 minutos
+    }, 120 * 64 * 1000); // 30 minutos
 };
