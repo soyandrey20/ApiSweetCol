@@ -83,8 +83,7 @@ export const backupDatabase = async (  res, io) => {
     try {
         const backupPath = await realizarBackup(io);
         await subirBackupAGoogleDrive(backupPath, io);
-        //devolvemos una respuesta HTTP
-        res.status(200).json({ message: 'Backup creado y subido a Google Drive', backupPath });
+     
     } catch (err) {
         console.error("Error al realizar el backup: ", err);
         res.status(500).json({ message: 'Error al crear o subir el backup', error: err });
