@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { Server } from 'socket.io'; // Importar Socket.IO
- 
+
 
 // Cargar credenciales de la cuenta de servicio
 const KEYFILEPATH = '../tonal-run-437413-p7-7e94c6d27a80.json';
@@ -79,14 +79,14 @@ const subirBackupAGoogleDrive = async (backupPath, io) => {
 };
 
 // Función para backup manual (con subida a Google Drive)
-export const backupDatabase = async (  res, io) => {
+export const backupDatabase = async (res, io) => {
     try {
         const backupPath = await realizarBackup(io);
         await subirBackupAGoogleDrive(backupPath, io);
-     
+
     } catch (err) {
         console.error("Error al realizar el backup: ", err);
-        res.status(500).json({ message: 'Error al crear o subir el backup', error: err });
+
     }
 };
 
@@ -98,7 +98,7 @@ export const iniciarBackupAutomatico = (io) => {
         try {
             const backupPath = await realizarBackup(io);
             await subirBackupAGoogleDrive(backupPath, io);
-             
+
         } catch (err) {
             console.error('Error al realizar el backup automático:', err);
         }
