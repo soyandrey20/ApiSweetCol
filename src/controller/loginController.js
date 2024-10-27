@@ -1,15 +1,16 @@
 import { getConnection } from "../dataBase/connection.js";
-
 import sql from 'mssql';
 import encrypt from 'bcryptjs'; // Asegúrate de importar correctamente bcryptjs
 import bcrypt from 'bcryptjs';
-
 import { enviarCorreo, enviarCorreoConPDF } from '../mailer.js'; // Importa tu función de enviarCorreo
-
 import crypto from 'crypto';
-
-
 import pdf from 'html-pdf';
+import { google } from 'googleapis';
+import { authorize } from '../googleAuth.js'; // Corrige la importación de authorize
+import axios from 'axios';
+ 
+
+ 
 
 export const loginUser = async (req, res) => {
     try {
@@ -54,7 +55,9 @@ export const loginUser = async (req, res) => {
     }
 };
 
+ 
 
+        
 
 export const addNewUser = async (req, res) => {
     try {
@@ -71,7 +74,8 @@ export const addNewUser = async (req, res) => {
             .input('username', sql.VarChar, req.body.usernamee)
             .input('email', sql.VarChar, req.body.emaill)
             .input('password', sql.VarChar, hash)
-            .query('INSERT INTO users (id, nombre, email, password) VALUES (@cedula, @username, @email, @password)');
+            .input('permiso', 0)
+            .query('INSERT INTO Users (id, nombre, email, password, permisos) VALUES (@cedula, @username, @email, @password, @permiso)');
 
         console.log(result);
 
@@ -114,15 +118,27 @@ export const User = async (req, res) => {
         if (result.recordset.length === 0) {
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
-
-        res.json({ nombre: result.recordset[0].nombre });
+       
+        res.json({ nombre: result.recordset[0].nombre,
+            permiso: result.recordset[0].permisos 
+         });
     }
     catch (error) {
         res.status(500).send(error.message);
     }
 }
 
-
+export const getPqrs = async (req, res) => {
+    try {
+        const pool = await getConnection();
+        const result = await pool.request().query('SELECT * FROM pqrs');
+        res.json(result.recordset);
+    }
+    catch (error) {
+        res.status(500);
+        res.send(error.message);
+    }
+};
 
 
 
@@ -300,6 +316,17 @@ export const addNomina = async (req, res) => {
     }
 };
 
+export const getNomina = async (req, res) => {
+    try {
+        const pool = await getConnection();
+        const result = await pool.request().query('SELECT * FROM Nomina');
+        res.json(result.recordset);
+    }
+    catch (error) {
+        res.status(500);
+        res.send(error.message);
+    }
+};
 
 
 export const reestablecerContraseña = async (req, res) => {
@@ -425,6 +452,11 @@ export const Contraseña = async (req, res) => {
 export const reportUser = async (req, res) => {
     try {
         const pool = await getConnection();
+    
+        const { opciones } = req.params; // Obtener el parámetro de la URL
+
+        console.log(opciones, "opciones");
+
         const result = await pool.request().query('SELECT * FROM DataUser');
         const result2 = await pool.request().query('SELECT * FROM DataUserSkill');
         const result3 = await pool.request().query('SELECT * FROM DataUserReferences');
@@ -528,18 +560,25 @@ export const reportUser = async (req, res) => {
             // Configurar el encabezado para la descarga
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'attachment; filename=DataUser.pdf');
+            
 
-            // Enviar el archivo PDF como respuesta para que se descargue
-            res.send(buffer);
+            if (opciones === "sendEmail") {
+                // Enviar el PDF por correo electrónico
+                enviarCorreoConPDF('jhonyandreyburga@gmail.com', 'Informe de Usuarios Registrados', htmlContent, buffer);
+            }else if (opciones === "downloadPDF") {
+              // Enviar el archivo PDF como respuesta para que se descargue
+             res.send(buffer);
+            }
 
-            // Enviar el PDF por correo
-            enviarCorreoConPDF('jhonyandreyburga@gmail.com', 'Informe de Usuarios Registrados', htmlContent, buffer);
         });
 
     } catch (error) {
         res.status(500).send(error.message);
     }
 };
+
+
+
 
 export const informationSexDashboard = async (req, res) => {
 
@@ -619,10 +658,10 @@ export const informationStudysDashboard = async (req, res) => {
         const pool = await getConnection();
         const result = await pool.query(`
         SELECT 
-            areasEstudio,
+            nivelEducacion,
             COUNT(*) as total
         FROM DataUserExperience
-        GROUP BY areasEstudio;
+        GROUP BY nivelEducacion;
       `);
         res.json(result.recordset);
     } catch (err) {
@@ -630,3 +669,113 @@ export const informationStudysDashboard = async (req, res) => {
         res.status(500).send("Error en el servidor");
     }
 };
+
+export const informationPqrsDashboard = async (req, res) => {
+    try {
+        const pool = await getConnection();
+        const result = await pool.query(`
+        SELECT 
+            tipo_peticion,
+            COUNT(*) as total
+        FROM pqrs
+        GROUP BY tipo_peticion;
+      `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error al ejecutar consulta: ", err);
+        res.status(500).send("Error en el servidor");
+    }
+};
+
+
+const verificarReCAPTCHA = async (token) => {
+    try {
+        const response = await axios.post(
+            `https://www.google.com/recaptcha/api/siteverify?secret=6Lf8z20qAAAAAPEhh0FMc7ey8ou5s0orYkwQLk7a&response=${token}`
+        );
+        return response.data && response.data.success;
+    } catch (error) {
+        console.error('Error verificando reCAPTCHA:', error.message);
+        return false;
+    }
+};
+ 
+
+
+export const addPqrs = async (req, res) => {
+    const token = req.body.recaptcha;
+    const captchaValido = await verificarReCAPTCHA(token);
+
+    if (captchaValido) {
+        try {
+            const { nombre, empresa, correo, telefono, tipo, mensaje } = req.body;
+            const pool = await getConnection();
+            await pool.request()
+                .input('nombre', sql.VarChar, nombre)
+                .input('empresa', sql.VarChar, empresa)
+                .input('correo', sql.VarChar, correo)
+                .input('telefono', sql.VarChar, telefono)
+                .input('tipo', sql.VarChar, tipo)
+                .input('mensaje', sql.VarChar, mensaje)
+                .query('INSERT INTO pqrs (nombre, empresa, correo, telefono, tipo_peticion, mensaje) VALUES (@nombre, @empresa, @correo, @telefono, @tipo, @mensaje)');
+                
+            console.log('PQRS almacenada con éxito.');
+            res.status(201).json({ message: 'PQRS almacenada con éxito.' });
+        } catch (error) {
+            console.error('Error al almacenar PQRS:', error);
+            res.status(500).json({ error: 'Error interno al almacenar PQRS' });
+        }
+    } else {
+        console.log('reCAPTCHA no válido.');
+        res.status(400).json({ error: 'Por favor, verifica que no eres un robot.' });
+    }
+};
+
+
+// // Cargar las credenciales
+// fs.readFile('credentials.json', (err, content) => {
+//     if (err) return console.log('Error loading client secret file:', err);
+//     authorize(JSON.parse(content), listForms);
+// });
+
+// // Listar los formularios existentes
+// function listForms(auth) {
+//     const forms = google.forms({ version: 'v1', auth });
+//     forms.forms.list({
+//         pageSize: 10,
+//     }, (err, res) => {
+//         if (err) return console.log('The API returned an error: ' + err);
+//         const forms = res.data.forms;
+//         if (forms.length) {
+//             console.log('Forms:');
+//             forms.map((form) => {
+//                 console.log(`${form.title} (${form.formId})`);
+//             });
+//         } else {
+//             console.log('No forms found.');
+//         }
+//     });
+// }
+
+ 
+// async function storeResponsesInDatabase(formResponses) {
+//     try {
+//         const pool = await getConnection();
+
+//         for (let response of formResponses) {
+//             await pool.request()
+//                 .input('ID_Encuesta', sql.VarChar, response.ID_Encuesta)
+//                 .input('NombreEncuesta', sql.VarChar, response.NombreEncuesta)
+//                 .input('Preguntas', sql.VarChar, response.Preguntas)
+//                 .input('ID_Empleado', sql.VarChar, response.ID_Empleado)
+//                 .input('FechaAplicacion', sql.Date, response.FechaAplicacion)
+//                 .input('Resultados', sql.VarChar, response.Resultados)
+//                 .query(`INSERT INTO EncuestasSatisfaccion (ID_Encuesta, NombreEncuesta, Preguntas, ID_Empleado, FechaAplicacion, Resultados) 
+//                         VALUES (@ID_Encuesta, @NombreEncuesta, @Preguntas, @ID_Empleado, @FechaAplicacion, @Resultados)`);
+//         }
+//         console.log('Respuestas almacenadas en la base de datos con éxito.');
+//     } catch (err) {
+//         console.error('Error al conectar a la base de datos:', err);
+//     }
+// }
+
