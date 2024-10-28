@@ -1,2 +1,4 @@
 node_modules
 echo "src/tonal-run-437413-p7-7e94c6d27a80.json" >> .gitignore
+
+tonal-run-437413-p7-7e94c6d27a80.json
