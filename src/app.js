@@ -5,7 +5,7 @@ import backupRoutes from './routes/backup.routes.js'; // Rutas del backup
 import { inicializarSocket, iniciarBackupAutomatico, backupDatabase } from './controller/backup.controller.js';
 import morgan from 'morgan'; // Importamos morgan para hacer logs
 import winston from 'winston'; // Importamos winston para hacer logs
-const MAX_REQUESTS = 50; // Definimos el máximo de solicitudes por minuto
+const MAX_REQUESTS = 20; // Definimos el máximo de solicitudes por minuto
 import http from 'http';
 
 

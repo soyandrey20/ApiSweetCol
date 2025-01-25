@@ -564,14 +564,14 @@ export const reportUser = async (req, res) => {
 
             if (opciones === "sendEmail") {
                 // Enviar el PDF por correo electrónico
-                enviarCorreoConPDF('jhonyandreyburga@gmail.com', 'Informe de Usuarios Registrados', htmlContent, buffer);
+               enviarCorreoConPDF('jhonyandreyburga@gmail.com', 'Informe de Usuarios Registrados', htmlContent, buffer);
             }else if (opciones === "downloadPDF") {
               // Enviar el archivo PDF como respuesta para que se descargue
              res.send(buffer);
             }
 
         });
-
+     
     } catch (error) {
         res.status(500).send(error.message);
     }

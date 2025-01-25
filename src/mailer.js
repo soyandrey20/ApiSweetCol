@@ -47,8 +47,10 @@ export function enviarCorreoConPDF(destinatario, asunto, contenidoHtml, pdfBuffe
     transporter.sendMail(mailOptions, function (error, info) {
         if (error) {
             console.error('Error al enviar el correo:', error);
+            return error;
         } else {
             console.log('Correo enviado:', info.response);
+            return info.response;
         }
     });
 };
